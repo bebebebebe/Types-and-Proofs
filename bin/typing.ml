@@ -1,13 +1,20 @@
+(* 
+Type inference for small set of programs
+Normalization function to reduce program according to type inference
+*)
+
 type prog =
   | Bool of bool
   | Int of int
   | Add of prog * prog
   | Lt of prog * prog
   | If of prog * prog * prog
+  | Product of prog * prog
 
 type typ =
   | TBool
   | TInt
+  | TProduct of typ * typ
 
 exception Type_error
 let rec infer = function
@@ -26,6 +33,7 @@ let rec infer = function
     | (TBool, TInt, TInt) -> TInt
     | _ -> raise Type_error
   end
+  | Product (p, q) -> TProduct (infer p, infer q)
 
 let typable p =
   try
@@ -35,33 +43,44 @@ let typable p =
 
 (** Perform one reduction step. *)
 let rec red : prog -> prog option = function
-| Bool _ | Int _ -> None
-| Add (Int n1 , Int n2) -> Some (Int (n1 + n2))
-| Add (p1 , p2) ->
-(
-match red p1 with
-| Some p1' -> Some (Add (p1' , p2))
-| None ->
-  match red p2 with
-  | Some p2' -> Some (Add (p1 , p2'))
-  | None -> None
-)
-| Lt (Int n1 , Int n2) -> Some (Bool (n1 < n2))
-| Lt (p1 , p2) ->
-(
-match red p1 with
-| Some p1' -> Some (Lt (p1' , p2))
-| None ->
-match red p2 with
-| Some p2' -> Some (Lt (p1 , p2'))
-| None -> None
-)
-| If (Bool true , p1 , p2) -> Some p1
-| If (Bool false , p1 , p2) -> Some p2
-| If (p , p1 , p2) ->
-match red p with
-| Some p' -> Some (If (p' , p1 , p2))
-| None -> None
+  | Bool _ | Int _ -> None
+  | Add (Int n1 , Int n2) -> Some (Int (n1 + n2))
+  | Add (p1 , p2) ->
+    (
+      match red p1 with
+      | Some p1' -> Some (Add (p1' , p2))
+      | None ->
+        match red p2 with
+        | Some p2' -> Some (Add (p1 , p2'))
+        | None -> None
+    )
+  | Lt (Int n1 , Int n2) -> Some (Bool (n1 < n2))
+  | Lt (p1 , p2) ->
+    (
+      match red p1 with
+      | Some p1' -> Some (Lt (p1' , p2))
+      | None ->
+      match red p2 with
+      | Some p2' -> Some (Lt (p1 , p2'))
+      | None -> None
+    )
+  | If (Bool true , p1 , _) -> Some p1
+  | If (Bool false , _ , p2) -> Some p2
+  | If (p , p1 , p2) ->
+    (
+      match red p with
+      | Some p' -> Some (If (p' , p1 , p2))
+      | None -> None
+    )
+  | Product (p1, p2) -> 
+    (
+      match red p1 with
+        | Some p1' -> Some (Product (p1', p2))
+        | None ->
+        match red p2 with
+          | Some p2' -> Some (Product (p1, p2'))
+          | None -> None
+    )
 
 (* Normalize: reduce as much as possible *)
 let rec normalize p =
