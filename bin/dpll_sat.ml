@@ -5,7 +5,12 @@ type literal = bool * var
 type clause = literal list
 type cnf = clause list
 
-(* Simple test case - example cnf *)
+(* 
+A cnf [] corresponds to true
+A clause [] corresponds to false
+*)
+
+(* Simple test case - example cnf symbolizes: (x1 v ~x2) & x3 *)
 let p = [[(true, 1); (false, 2)]; [(true, 3)]]
 
 (* Define mem, map, fliter without using built in list primitives *)
@@ -28,10 +33,10 @@ let rec list_filter f = function
 let rec subst_cnf x is_true p =
   if is_true then
     list_map
-      (fun y -> list_filter (fun z -> z <> (false, x)) y)
-      (list_filter (fun y -> not(list_mem (true, x) y)) p)
+      (fun y -> list_filter (fun z -> z <> (false, x)) y)   (* remove (false, x) literals from remaining clauses *)
+      (list_filter (fun y -> not(list_mem (true, x) y)) p)  (* remove clauses with (true, x) *)
   else
-    p (* TODO *)
-
-
+    list_map
+      (fun y -> list_filter (fun z -> z <> (true, x)) y)    (* remove (true, x) literals from remaining clauses *)
+      (list_filter (fun y -> not(list_mem (false, x) y)) p) (* remove clauses with (false, x) *)
 
