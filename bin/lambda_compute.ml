@@ -1,16 +1,4 @@
-(* Calculating with the Lambda Calculus *)
-
-type var = string
-
-type t =
-  | Var of var
-  | App of t * t
-  | Abs of var * t
-
-let rec to_string : t -> string = function
-  | Var x -> x
-  | App (t, u) -> "(" ^ to_string t ^ " " ^ to_string u ^ ")"
-  | Abs (x, t) -> "(" ^"λ" ^ x ^ "." ^ to_string t ^ ")"
+open Lambda_implement
 
 (* Identity *)
 let id = Abs ("x", Var "x")
@@ -20,8 +8,7 @@ let btrue = Abs ("x", Abs ("y", Var "x"))
 let bfalse = Abs ("x", Abs ("y", Var "y"))
 
 (* Not, And, Or defined in terms of Booleans *)
-(* (λx.(x ((λx.(λy.y)) (λx.(λy.x))))) *)
-let negation = Abs ("x", App (Var "x", App (bfalse, btrue)))
+let negation = Abs ("x", App (App (Var "x", bfalse), btrue))
 
 (* λx.(λy.(x ((y ((λx.(λy.x)) (λx.(λy.y)))) (λx.(λy.y)))))) *)
 let conjunction =
@@ -59,26 +46,25 @@ let rec abss lst t =
 
 (* test case: (apps [t; u; v; w] = App (App (App (t, u), v), w)) *)
 
-let rec apss lst =
-  match List.rev lst with
-  | [] | [_] -> raise Invalid_argument
-  | [u; t] -> App (t, u)
-  | t :: tail -> App (apss (List.rev tail), t)
-
-(* Rewrite above with aux function instead of List.rev *)
-let apss lst =
+let apps lst =
   match lst with
   | [] | [_] -> raise Invalid_argument
-  | [t; u] -> App (t, u)
   | t :: u :: tail -> (let rec aux acc = function
     | [] -> acc
     | x :: tail -> aux (App (acc, x) ) tail
     in  
     aux (App (t, u)) tail)
 
+(* apps above, defined using List.rev instead of auxilary function *)
+let rec apps_rev lst =
+  match List.rev lst with
+  | [] | [_] -> raise Invalid_argument
+  | [u; t] -> App (t, u)
+  | t :: tail -> App (apps_rev (List.rev tail), t)
+
 (* Conditional: if b then x else y *)
 
-let bif = abss ["b"; "x"; "y"] (apss [Var "b"; Var "x"; Var "y"])
+let bif = abss ["b"; "x"; "y"] (apps [Var "b"; Var "x"; Var "y"])
 
 (* Natural Numbers (Church Numerals) *)
 
@@ -88,3 +74,26 @@ let nat n =
     | n -> App (f, aux f x (n - 1))
   in
   abss ["f"; "x"] (aux (Var "f") (Var "x") n)
+
+(* Successor *)
+
+(* (λn.(λf.(λx.(((f n) f) x)))) *)
+let succ =
+  abss ["n"; "f"; "x"] (apps [Var "f"; apps [Var "n"; Var "f"; Var "x"]])
+
+
+(* Arithmetic *)
+let add = abss ["m"; "n"] (apps [Var "m"; succ; Var "n"])
+
+let mul = abss ["m"; "n"] (apps [Var "m"; App (add, Var "n"); nat 0])
+
+let iszero = abss ["n"; "x"; "y"] (apps [Var "n"; Abs ("z", Var "y"); Var "x"])
+
+
+(* Pairs *)
+let pair = abss ["x"; "y"; "b"] (apps [bif; Var "b"; Var "x"; Var "y"])
+
+let fst = Abs ("p", App (Var "p", btrue))
+
+let snd = Abs ("p", App (Var "p", bfalse))
+
