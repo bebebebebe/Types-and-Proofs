@@ -121,4 +121,5 @@ let pred_fun = Abs ("p", apps [pair; App (snd, Var "p"); App(succ, App (snd, Var
 
 let pred = Abs ("n", apps [fst; apps [Var "n"; pred_fun; apps [pair; nat 0; nat 0]]])
 
-
+(* subtraction *)
+let sub = abss ["m"; "n"] (apps [Var "n"; pred; Var "m"])
