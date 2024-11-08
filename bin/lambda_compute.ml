@@ -1,3 +1,5 @@
+(* Church numerals, logic, arithmetic in lambda calculus *)
+
 open Lambda_implement
 
 (* Identity *)
@@ -96,4 +98,27 @@ let pair = abss ["x"; "y"; "b"] (apps [bif; Var "b"; Var "x"; Var "y"])
 let fst = Abs ("p", App (Var "p", btrue))
 
 let snd = Abs ("p", App (Var "p", bfalse))
+
+(* Finobacci *)
+
+(* naive *)
+let rec fib_naive n =
+  if n = 0 then 0 else 
+    if n = 1 then 1 else
+      fib_naive (n - 1) + fib_naive (n - 2)
+
+(* iterative *)
+let fib_fun (b, a) = (a, a + b)
+
+let rec iter n f x =
+  if n = 0 then x
+  else f (iter (n - 1) f x)
+
+let fib n = Stdlib.fst (iter n fib_fun (0, 1))
+
+(* predecessor *)
+let pred_fun = Abs ("p", apps [pair; App (snd, Var "p"); App(succ, App (snd, Var "p"))])
+
+let pred = Abs ("n", apps [fst; apps [Var "n"; pred_fun; apps [pair; nat 0; nat 0]]])
+
 
