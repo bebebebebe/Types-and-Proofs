@@ -76,6 +76,7 @@ let rec pure = function
 
 (* test case *)
 let q = [[(true, 1); (true, 2)]; [(false, 3)]]
+let contradiction = [[(true, 1)]; [(false, 1)]]
 
 (* Improve on dpll_simple above as follows:
 if the formula is empty then it returns true,
@@ -99,3 +100,25 @@ let rec dpll p =
     | (false, v) -> dpll (subst_cnf v false p))
   with Not_found ->
     dpll (subst_cnf (snd (List.hd(List.hd p))) true p) || dpll (subst_cnf (snd (List.hd(List.hd p))) false p)
+
+(* constructive version of dpll --> return an assignment if p is satisfiable *)
+  let rec dpll_con p acc =
+    match p with
+    | [] -> (true, acc)
+    | p' when list_mem [] p' -> (false, acc)
+    | _ ->
+      try (match unit p with
+      | (true, v) -> dpll_con (subst_cnf v true p) ((true, v) :: acc)
+      | (false, v) -> dpll_con (subst_cnf v false p) ((false, v) :: acc))
+    with Not_found ->
+      try (match pure p with
+      | (true, v) -> dpll_con (subst_cnf v true p) ((true, v) :: acc)
+      | (false, v) -> dpll_con (subst_cnf v false p) ((false, v) :: acc))
+    with Not_found ->
+      let v = (snd (List.hd(List.hd p))) in (
+        match (dpll_con (subst_cnf v true p) ((true, v) :: acc)) with
+        | (true, q) -> (true, q)
+        | (false, q) -> match (dpll_con (subst_cnf v false p) ((false, v) :: acc)) with 
+          | (true, r) -> (true, r)
+          | (false, r) -> (false, r)
+      )
